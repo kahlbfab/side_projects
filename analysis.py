@@ -22,7 +22,7 @@ def convert_min_s(x):
     return "{}min {}s".format(min_s[0], min_s[1])
 
 
-df_plank = pd.read_excel("plank_time.xlsx", header=[0])
+df_plank = pd.read_csv("plank_time.csv", header=[0])
 
 df_plank['Name'] = df_plank['Vorname'] + ' ' + df_plank['Nachname'] 
 
