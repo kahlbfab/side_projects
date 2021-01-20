@@ -21,44 +21,60 @@ def convert_min_s(x):
     min_s = divmod(x.total_seconds(), 60)
     return "{}min {}s".format(min_s[0], min_s[1])
 
+def preprocess(df):
 
-df_plank = pd.read_csv("plank_time.csv", header=[0])
+    df['Name'] = df['Vorname'] + ' ' + df['Nachname'] 
 
-df_plank['Name'] = df_plank['Vorname'] + ' ' + df_plank['Nachname'] 
+    df['goal_time'] = conv_to_datetime(df['goal_min'], df["goal_s"])
+    df['eff_time'] = conv_to_datetime(df['eff_min'], df["eff_s"])
 
-df_plank['goal_time'] = conv_to_datetime(df_plank['goal_min'], df_plank["goal_s"])
-df_plank['eff_time'] = conv_to_datetime(df_plank['eff_min'], df_plank["eff_s"])
 
-# goal achieved
-df_plank['goal_achieved'] = df_plank['eff_time'] >= df_plank['goal_time']
+    df['goal_achieved'] = df['eff_time'] >= df['goal_time']
+    df['goal_diff'] = df['eff_time'] - df['goal_time']
+    df['goal_diff'] = df['goal_diff'].apply(convert_min_s)
 
-df_plank['goal_diff'] = df_plank['eff_time'] - df_plank['goal_time']
-df_plank['goal_diff'] = df_plank['goal_diff'].apply(convert_min_s)
+    df.sort_values(by=['eff_time'], ascending=False, inplace=True)
+    df['Rank'] = np.arange(start=1, stop=df.shape[0] + 1, step=1) 
+    df.set_index('Rank', inplace=True)
 
-df_plank.drop(['goal_min',
-               'goal_s',
-               'eff_min',
-               'eff_s',
-               'Vorname',
-               'Nachname'],
-               axis=1, inplace=True)
+    # drop unnecessary attributes
+    df.drop(['goal_min',
+             'goal_s',
+             'eff_min',
+             'eff_s',
+             'Vorname',
+             'Nachname'],
+             axis=1, inplace=True)
 
-df_plank.sort_values(by=['eff_time'], ascending=False, inplace=True)
-df_plank['Rank'] = np.arange(start=1, stop=df_plank.shape[0] + 1, step=1) 
-df_plank.set_index('Rank', inplace=True)
+    # rearrange colums
+    df = df[['Name', 'eff_time', 'goal_time', 'goal_diff', 'goal_achieved']]
+    
+    return df
 
-# create nice styler object
-df_plank_nice = df_plank.rename(columns={'goal_time': 'Ziel_Zeit',
-                                         'eff_time': 'Effektive_Zeit',
-                                         'goal_achieved': 'Ziel_Erreicht',
-                                         'goal_diff': 'Differenz'})
-df_plank_nice = df_plank_nice.style.apply(highlight_goal_achieved, axis=1)
-df_plank_nice.format(
+def create_nice_styler(df):
+    df_nice = df.rename(
+        columns=
+            {
+                'goal_time': 'Ziel_Zeit',
+                'eff_time': 'Effektive_Zeit',
+                'goal_achieved': 'Ziel_Erreicht',
+                'goal_diff': 'Differenz'
+            })
+
+    df_nice = df_nice.style.apply(highlight_goal_achieved, axis=1)
+
+    df_nice.format(
     {
         "Ziel_Zeit": lambda x: x.strftime("%Mmin %Ss"),
         "Effektive_Zeit": lambda x: x.strftime("%Mmin %Ss"),
-    }
-)
+    })
+
+    return df_nice
+
+# load data
+df_plank = pd.read_csv("plank_time.csv", header=[0])
+df_plank = preprocess(df_plank)
+df_plank_nice = create_nice_styler(df_plank)
 
 ## streamlit
 st.title('Plank Challene 2021')
